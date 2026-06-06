@@ -1,0 +1,14 @@
+# SHADE — Stage 0 Dependencies
+# Primary target: Raspberry Pi 5, CPU-only inference
+
+# Core inference
+onnxruntime>=1.17.0       # CPU-only, no GPU variant
+numpy>=1.24.0
+opencv-python-headless>=4.8.0
+
+# Config and system
+pyyaml>=6.0
+psutil>=5.9.0
+
+# Optional: Pi Camera Module support (uncomment on Pi)
+# picamera2>=0.3.12

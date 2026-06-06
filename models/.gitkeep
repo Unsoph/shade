@@ -1,0 +1,3 @@
+# Place ONNX model files here.
+# Download YOLOv8n: https://github.com/ultralytics/assets/releases
+# Expected: yolov8n.onnx (~12MB)
