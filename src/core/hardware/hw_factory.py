@@ -64,6 +64,12 @@ def create_hw_monitor(config: dict) -> HardwareMonitor:
         from src.core.hardware.raspberry_pi_monitor import RaspberryPiMonitor
         logger.info("Hardware monitor: Raspberry Pi")
         return RaspberryPiMonitor()
+    elif hardware == "simulated":
+        from src.core.hardware.sim_monitor import SimulatedMonitor
+        sim = config.get("simulation", {})
+        logger.info("Hardware monitor: Simulated (%s)", sim.get("scenario"))
+        return SimulatedMonitor(sim.get("scenario", "nominal"),
+                                sim.get("speed", 1.0))
     elif hardware == "jetson":
         from src.core.hardware.jetson_monitor import JetsonMonitor
         logger.info("Hardware monitor: Jetson")

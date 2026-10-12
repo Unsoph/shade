@@ -37,6 +37,14 @@ class HealthSnapshot:
     model_tier: int = -1
     vram_mb: int = 0
 
+    # Control plane (filled by the controller)
+    state: str = "NOMINAL"
+    rung: int = 0
+    rung_name: str = ""
+    detections: int = 0
+    swap_stall_ms: float = 0.0
+    input_fault: str = ""
+
     # Platform
     platform: str = "unknown"
 
