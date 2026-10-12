@@ -1,7 +1,8 @@
-"""Video capture pipeline — feeds frames to the inference backend.
+"""Inference loop: frames in, detections out, control plane serviced.
 
-Auto-detects USB camera vs Pi Camera Module at startup.
-Handles camera disconnect gracefully.
+Each iteration is a frame boundary: a preloaded model is swapped in before
+inference, never mid-frame. Between detections on frame-skip rungs the
+last result is reused.
 """
 
 import logging
@@ -9,127 +10,98 @@ import time
 from typing import TYPE_CHECKING
 
 import cv2
-import numpy as np
 
-from src.inference.backends.base_backend import InferenceBackend
-from src.video.draw import draw_detections, draw_fps
+from src.video.draw import draw_detections, draw_fps, draw_status
+from src.video.source import FrameSource
 
 if TYPE_CHECKING:
-    from src.core.health_monitor import HealthMonitor
+    from src.app import Runtime
 
 logger = logging.getLogger(__name__)
 
 
-def _try_picamera2() -> bool:
-    """Check if picamera2 is available (Pi Camera Module)."""
-    try:
-        import picamera2  # noqa: F401
-        return True
-    except ImportError:
-        return False
+def _show(frame) -> bool:
+    """Show a frame; False once the user presses q. Raises cv2.error on
+    OpenCV builds without GUI support."""
+    cv2.imshow("SHADE Inference", frame)
+    return not (cv2.waitKey(1) & 0xFF == ord("q"))
 
 
-def _open_camera(source) -> cv2.VideoCapture:
-    """Open a video source — camera index, video file path, or picamera2."""
-    if isinstance(source, str) and not source.isdigit():
-        cap = cv2.VideoCapture(source)
-        if not cap.isOpened():
-            raise RuntimeError(f"Cannot open video file: {source}")
-        logger.info("Video source: file %s", source)
-        return cap
-
-    cam_index = int(source) if isinstance(source, str) else source
-    cap = cv2.VideoCapture(cam_index)
-    if cap.isOpened():
-        logger.info("Video source: USB camera index %d", cam_index)
-        return cap
-
-    if _try_picamera2():
-        logger.info("USB camera unavailable, trying picamera2...")
-        cap = cv2.VideoCapture(cam_index, cv2.CAP_V4L2)
-        if cap.isOpened():
-            logger.info("Video source: Pi Camera via V4L2")
-            return cap
-
-    raise RuntimeError(
-        f"No camera available at index {cam_index}. "
-        "Check USB connection or enable Pi Camera in raspi-config."
-    )
-
-
-def run_pipeline(
-    engine: InferenceBackend,
-    source,
-    display: bool = True,
-    max_frames: int = 0,
-    health_monitor: "HealthMonitor | None" = None,
-) -> None:
-    """Main inference loop.
-
-    Args:
-        engine: loaded InferenceBackend instance.
-        source: camera index (int/str) or video file path.
-        display: if True, show OpenCV window. False for headless Pi.
-        max_frames: stop after N frames (0 = unlimited).
-    """
-    cap = _open_camera(source)
-    frame_count = 0
-    fps = 0.0
-    prev_time = time.monotonic()
-
-    logger.info("Pipeline started. Press 'q' to quit.")
+def run_pipeline(rt: "Runtime", source, display: bool = True,
+                 max_frames: int = 0) -> int:
+    """Run the loop. Returns the number of frames processed."""
+    cfg = rt.config
+    manager, health, ih = rt.manager, rt.health, rt.input_health
+    src = FrameSource(source, cfg["camera"],
+                      on_event=rt.log.record_event).start()
+    max_errors = cfg["runtime"]["max_consecutive_errors"]
+    reopen_gap = cfg["input"]["reopen_cooldown_s"]
+    last_reopen = -reopen_gap
+    detections, errors, frames, pending_swap = [], 0, 0, None
+    logger.info("Pipeline started%s.", " (press q to quit)" if display else "")
 
     try:
         while True:
-            ret, frame = cap.read()
-            if not ret:
-                logger.warning("Frame read failed — end of stream or disconnect.")
-                break
+            frame = src.read()
+            if frame is None:
+                if src.eof:
+                    break
+                health.set_runtime(input_fault=ih.no_frame())
+                continue
 
-            detections = engine.infer(frame)
-            frame_count += 1
+            pending_swap = manager.poll() or pending_swap  # frame boundary
+            rung = manager.rung
+            if frames % rung.detect_every == 0:
+                started = time.perf_counter()
+                try:
+                    detections = manager.backend.infer(frame)
+                    errors = 0
+                    if pending_swap:  # first inference on the new model
+                        rt.controller.on_swap(
+                            pending_swap, (time.perf_counter() - started) * 1000)
+                        pending_swap = None
+                except Exception:  # noqa: BLE001 - count, then escalate
+                    errors += 1
+                    logger.exception("Inference error %d/%d", errors, max_errors)
+                    if errors >= max_errors:
+                        raise
+            frames += 1
 
-            # Feed FPS data to health monitor
-            if health_monitor is not None:
-                health_monitor.fps_tracker.tick()
-
+            fault = ih.update(frame) if cfg["input"]["enabled"] else ""
+            health.set_runtime(input_fault=fault, detections=len(detections))
+            health.fps_tracker.tick()
             now = time.monotonic()
-            dt = now - prev_time
-            if dt > 0:
-                instant_fps = 1.0 / dt
-                fps = 0.9 * fps + 0.1 * instant_fps if fps > 0 else instant_fps
-            prev_time = now
+            if fault == "frozen" and src.live and now - last_reopen >= reopen_gap:
+                last_reopen = now
+                rt.log.record_event("camera_reopen_requested", {"fault": fault})
+                src.request_reopen()
+            if rt.heartbeat is not None:
+                rt.heartbeat.beat(frames)
 
             if display:
+                snap = health.snapshot()
                 draw_detections(frame, detections)
-                draw_fps(frame, fps)
+                draw_fps(frame, snap.fps)
+                draw_status(frame, snap.state, rung.name, snap.cpu_temp)
                 try:
-                    cv2.imshow("SHADE Inference", frame)
-                    if cv2.waitKey(1) & 0xFF == ord("q"):
-                        logger.info("Quit requested by user.")
+                    if not _show(frame):
                         break
                 except cv2.error:
-                    logger.warning("No GUI support in this OpenCV build; "
-                                   "continuing headless.")
+                    logger.warning("No GUI in this OpenCV build; headless.")
                     display = False
-            else:
-                if frame_count % 30 == 0:
-                    logger.info(
-                        "Frame %d | FPS %.1f | detections %d",
-                        frame_count, fps, len(detections),
-                    )
-
-            if max_frames and frame_count >= max_frames:
-                logger.info("Reached max_frames=%d, stopping.", max_frames)
+            elif frames % 30 == 0:
+                snap = health.snapshot()
+                logger.info("Frame %d | FPS %.1f | %s | rung %s | %d det",
+                            frames, snap.fps, snap.state, rung.name,
+                            len(detections))
+            if max_frames and frames >= max_frames:
                 break
     finally:
-        cap.release()
+        src.close()
         if display:
             try:
                 cv2.destroyAllWindows()
             except cv2.error:
                 pass
-        logger.info(
-            "Pipeline stopped after %d frames. Last FPS: %.1f",
-            frame_count, fps,
-        )
+        logger.info("Pipeline stopped after %d frames.", frames)
+    return frames

@@ -1,23 +1,80 @@
-# SHADE Deployment Configuration — Stage 0
-# Primary target: Raspberry Pi 5 (8GB), CPU inference only
+# SHADE deployment configuration. Anything omitted falls back to
+# src/core/defaults.py. Paths are relative to the project root.
 
 device:
-  hardware: raspberry_pi
+  hardware: raspberry_pi        # raspberry_pi | jetson | generic | simulated
   name: "shade-pi5-dev"
-  # Future: "jetson_nano", "jetson_xavier", "jetson_orin"
 
 inference:
-  backend: onnxruntime            # onnxruntime | tflite | openvino | tensorrt
-  model_path: models/yolov8n.onnx # Relative to project root
+  backend: onnxruntime          # onnxruntime | tflite | openvino | tensorrt | fake
+  model_path: models/yolov8n.onnx
   input_size: 640
   conf_threshold: 0.25
   iou_threshold: 0.45
-  num_threads: 4                  # Pi 5 has 4× Cortex-A76
+  num_threads: 4                # Pi 5 has 4x Cortex-A76
 
 camera:
-  source: 0                       # 0 = first USB/CSI camera, or path to video file
-  display: true                   # false for headless operation
-  max_frames: 0                   # 0 = unlimited
+  source: 0                     # index, video path, rtsp:// URL, or synthetic
+  display: true                 # false for headless operation
+  max_frames: 0                 # 0 = unlimited
+  reconnect: true               # reopen the camera after read failures
+  reconnect_initial_s: 1.0
+  reconnect_max_s: 30.0
+  loop_video: false
+
+# Degradation ladder, best first. Rungs whose model file is missing are
+# skipped, so the ladder is whatever is on disk. Generate the 320 and INT8
+# models with scripts/export_models.py and scripts/quantize_int8.py.
+ladder:
+  - {name: nominal,    model: models/yolov8n.onnx,          input_size: 640, detect_every: 1}
+  - {name: frame-skip, model: models/yolov8n.onnx,          input_size: 640, detect_every: 2}
+  - {name: small-320,  model: models/yolov8n_320.onnx,      input_size: 320, detect_every: 2}
+  - {name: emergency,  model: models/yolov8n_320_int8.onnx, input_size: 320, detect_every: 3}
+
+ladder_settings:
+  min_free_mb_after_load: 300   # refuse a preload that would leave less RAM
+  memory_factor: 3.0            # estimated RAM = model file size * factor
+  warmup: true                  # one dummy inference before swapping in
+  preload_nice: 10              # niceness of the preload thread (untuned)
+
+# Decision policy. Temperature bands are degrees C. Defaults follow the
+# Pi 5's ~80C soft limit; tune per enclosure and ambient with real data.
+policy:
+  poll_interval_s: 1.0
+  warm_c: 70.0
+  degrade_c: 75.0
+  critical_c: 80.0
+  upgrade_gate_c: 65.0          # upgrades only at or below this temperature
+  rise_c_per_s: 0.5             # anticipation: rising this fast while warm
+  slope_window_s: 10.0
+  mem_warn_pct: 85.0
+  mem_crit_pct: 92.0
+  swap_warn_pct: 10.0
+  swap_crit_pct: 30.0
+  min_fps: 0.0                  # >0 enables an FPS floor signal
+  fps_grace_s: 15.0
+  confirm_samples: 3            # consecutive samples before degrading
+  dwell_s: 10.0                 # min time since last change before degrading
+  cooldown_s: 20.0              # min time since last change before upgrading
+  recover_hold_s: 30.0          # continuous calm needed per upgrade step
+  level_to_rung: [0, 1, 2, 3]   # pressure level -> minimum rung
+  db_path: logs/shade.db
+
+input:
+  enabled: true
+  frozen_s: 5.0
+  frozen_eps: 0.02
+  dark_level: 8.0
+  dark_s: 5.0
+  lost_s: 3.0
+  reopen_cooldown_s: 30.0
+
+runtime:
+  max_consecutive_errors: 5     # then the process exits and the watchdog restarts it
+
+simulation:                     # used when hardware: simulated or --simulate
+  scenario: nominal
+  speed: 1.0
 
 logging:
   level: INFO

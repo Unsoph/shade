@@ -48,6 +48,31 @@ DEFAULTS: dict = {
         "level_to_rung": [0, 1, 2, 3],
         "db_path": "logs/shade.db",
     },
+    # Degradation ladder, best first. Rungs whose model file is missing are
+    # skipped, so the ladder is whatever is on disk (see scripts/export_models.py).
+    "ladder": [
+        {"name": "nominal", "model": "models/yolov8n.onnx",
+         "input_size": 640, "detect_every": 1},
+        {"name": "frame-skip", "model": "models/yolov8n.onnx",
+         "input_size": 640, "detect_every": 2},
+        {"name": "small-320", "model": "models/yolov8n_320.onnx",
+         "input_size": 320, "detect_every": 2},
+        {"name": "emergency", "model": "models/yolov8n_320_int8.onnx",
+         "input_size": 320, "detect_every": 3},
+    ],
+    "ladder_settings": {
+        "min_free_mb_after_load": 300,  # refuse to preload below this headroom
+        "memory_factor": 3.0,           # est. RAM = model file size * factor
+        "warmup": True,
+        "preload_nice": 10,  # preload thread niceness (Linux); untuned, measure on device
+    },
+    "input": {
+        "enabled": True,
+        "frozen_s": 5.0, "frozen_eps": 0.02,
+        "dark_level": 8.0, "dark_s": 5.0,
+        "lost_s": 3.0, "reopen_cooldown_s": 30.0,
+    },
+    "runtime": {"max_consecutive_errors": 5},
     "simulation": {"scenario": "nominal", "speed": 1.0},
     "logging": {
         "level": "INFO",

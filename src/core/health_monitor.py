@@ -11,42 +11,13 @@ Publishes HealthSnapshot to the event bus at a configurable rate.
 import logging
 import threading
 import time
-from collections import deque
+from typing import Callable
 
+from src.core.fps import FPSTracker
 from src.core.hardware.base_hw_monitor import HardwareMonitor
 from src.core.snapshots import HealthSnapshot
 
 logger = logging.getLogger(__name__)
-
-
-class FPSTracker:
-    """Thread-safe FPS tracker using a circular buffer of timestamps."""
-
-    def __init__(self, buffer_size: int = 30):
-        self._timestamps: deque[float] = deque(maxlen=buffer_size)
-        self._lock = threading.Lock()
-        self._frame_count = 0
-
-    def tick(self) -> None:
-        """Record a frame timestamp. Called from inference loop."""
-        with self._lock:
-            self._timestamps.append(time.monotonic())
-            self._frame_count += 1
-
-    @property
-    def fps(self) -> float:
-        """Rolling average FPS over the buffer window."""
-        with self._lock:
-            if len(self._timestamps) < 2:
-                return 0.0
-            dt = self._timestamps[-1] - self._timestamps[0]
-            if dt <= 0:
-                return 0.0
-            return (len(self._timestamps) - 1) / dt
-
-    @property
-    def frame_count(self) -> int:
-        return self._frame_count
 
 
 class HealthMonitor:
@@ -62,6 +33,36 @@ class HealthMonitor:
         self.fps_tracker = FPSTracker(buffer_size=30)
         self._snapshot = HealthSnapshot(platform=hw_monitor.get_platform_name())
         self._lock = threading.Lock()
+        self._listeners: list[Callable[[HealthSnapshot], None]] = []
+        self._stop_event = threading.Event()
+
+    def add_listener(self, fn: Callable[[HealthSnapshot], None]) -> None:
+        """Call fn(snapshot) after every polled update (poll thread)."""
+        self._listeners.append(fn)
+
+    def set_control(self, state: str | None = None, rung: int | None = None,
+                    rung_name: str | None = None) -> None:
+        """Control-plane fields written by the controller."""
+        with self._lock:
+            if state is not None:
+                self._snapshot.state = state
+            if rung is not None:
+                self._snapshot.rung = rung
+                self._snapshot.model_tier = rung
+            if rung_name is not None:
+                self._snapshot.rung_name = rung_name
+
+    def set_runtime(self, input_fault: str | None = None,
+                    detections: int | None = None,
+                    swap_stall_ms: float | None = None) -> None:
+        """Pipeline-side fields."""
+        with self._lock:
+            if input_fault is not None:
+                self._snapshot.input_fault = input_fault
+            if detections is not None:
+                self._snapshot.detections = detections
+            if swap_stall_ms is not None:
+                self._snapshot.swap_stall_ms = swap_stall_ms
 
     def update(self) -> HealthSnapshot:
         """Refresh hardware telemetry and return updated snapshot."""
@@ -107,16 +108,20 @@ class HealthMonitor:
         def _poll_loop():
             logger.info("Health polling started (interval=%.1fs)", interval)
             while not self._stop_event.is_set():
-                self.update()
+                snap = self.update()
+                for fn in self._listeners:
+                    try:
+                        fn(snap)
+                    except Exception:  # noqa: BLE001 - a listener must not kill polling
+                        logger.exception("Health listener failed.")
                 self._stop_event.wait(interval)
             logger.info("Health polling stopped.")
 
-        self._stop_event = threading.Event()
+        self._stop_event.clear()
         t = threading.Thread(target=_poll_loop, daemon=True, name="health-poll")
         t.start()
         return t
 
     def stop_polling(self) -> None:
         """Signal the polling thread to stop."""
-        if hasattr(self, "_stop_event"):
-            self._stop_event.set()
+        self._stop_event.set()

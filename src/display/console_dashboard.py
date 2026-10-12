@@ -56,6 +56,15 @@ def _color_throttle(status: str) -> str:
     return f"[bold red]{status}[/]"
 
 
+def _color_state(state: str) -> str:
+    """Color-code the controller state."""
+    if state in ("NOMINAL", "RECOVERING"):
+        return f"[green]{state}[/]"
+    if state in ("ELEVATED", "DEGRADED", "OS_CONTENTION"):
+        return f"[yellow]{state}[/]"
+    return f"[bold red]{state}[/]"
+
+
 def _build_table(monitor: HealthMonitor) -> Table:
     """Build the dashboard table from current snapshot."""
     snap = monitor.snapshot()
@@ -81,10 +90,14 @@ def _build_table(monitor: HealthMonitor) -> Table:
     table.add_row("Memory", _color_percent(snap.memory_percent))
     table.add_row("Swap", _color_percent(snap.swap_percent, warn=10, crit=30))
     table.add_row("", "")
+    table.add_row("State", _color_state(snap.state))
+    table.add_row("Rung", f"{snap.rung} ({snap.rung_name})")
     table.add_row("Model", snap.active_model)
     table.add_row("Backend", snap.backend_name)
-    table.add_row("Model Tier", str(snap.model_tier) if snap.model_tier >= 0 else "N/A")
     table.add_row("VRAM/RAM", f"{snap.vram_mb} MB")
+    table.add_row("Detections", str(snap.detections))
+    table.add_row("Last swap stall", f"{snap.swap_stall_ms:.1f} ms")
+    table.add_row("Input", snap.input_fault or "[green]OK[/]")
     table.add_row("", "")
     table.add_row("Platform", snap.platform)
 
