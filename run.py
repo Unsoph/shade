@@ -38,6 +38,9 @@ def parse_args(argv=None) -> argparse.Namespace:
     ap.add_argument("--db", default=None, help="decision log path")
     ap.add_argument("--supervised", action="store_true",
                     help="run under the watchdog supervisor (auto-restart)")
+    ap.add_argument("--serve", nargs="?", const=-1, type=int, metavar="PORT",
+                    help="serve /metrics, /status and a live page (default port "
+                         "from config observability.port)")
     ap.add_argument("--heartbeat", default=None, help=argparse.SUPPRESS)
     return ap.parse_args(argv)
 
@@ -70,6 +73,11 @@ def main(argv=None) -> int:
         if not run_diagnostics():
             return 1
         print()
+
+    if args.serve is not None:
+        config["observability"]["enabled"] = True
+        if args.serve >= 0:
+            config["observability"]["port"] = args.serve
 
     source = args.source if args.source is not None else config["camera"]["source"]
     display = not args.headless and config["camera"]["display"]

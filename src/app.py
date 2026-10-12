@@ -90,6 +90,15 @@ def build_runtime(config: dict, start_rung: int | str = 0, fake: bool = False,
         controller.on_decision = KnownGoodRecorder(
             StateStore(resolve_path(wd["state_path"])),
             [r.name for r in rungs], wd["good_after_s"] / speed)
+    obs = config["observability"]
+    if obs["enabled"]:
+        from src.observability.server import ObservabilityServer
+        try:
+            server = ObservabilityServer(health, log, obs["host"], obs["port"],
+                                         obs["decisions_limit"]).start()
+            rt.closers.append(server.stop)
+        except OSError as exc:  # port busy: monitoring must not stop inference
+            logger.warning("Observability disabled: %s", exc)
     return rt
 
 

@@ -72,6 +72,12 @@ input:
 runtime:
   max_consecutive_errors: 5     # then the process exits and the watchdog restarts it
 
+observability:                  # read-only HTTP: /, /status, /decisions, /metrics, /healthz
+  enabled: false                # or run with --serve [PORT]
+  host: 127.0.0.1               # unauthenticated: only widen on a trusted network
+  port: 9108
+  decisions_limit: 50
+
 simulation:                     # used when hardware: simulated or --simulate
   scenario: nominal
   speed: 1.0

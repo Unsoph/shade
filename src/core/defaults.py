@@ -89,6 +89,12 @@ DEFAULTS: dict = {
         "lkg_max_age_s": 600.0,      # ignore an older last-known-good rung
         "good_after_s": 60.0,        # stable this long on a rung = known good
     },
+    "observability": {
+        "enabled": False,
+        "host": "127.0.0.1",  # unauthenticated: widen only on a trusted network
+        "port": 9108,
+        "decisions_limit": 50,
+    },
     "simulation": {"scenario": "nominal", "speed": 1.0},
     "logging": {
         "level": "INFO",
