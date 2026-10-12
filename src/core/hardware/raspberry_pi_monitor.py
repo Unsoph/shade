@@ -13,6 +13,7 @@ import subprocess
 import psutil
 
 from src.core.hardware.base_hw_monitor import HardwareMonitor, ThrottleFlags
+from src.core.hardware.throttle import parse_throttled
 
 logger = logging.getLogger(__name__)
 
@@ -88,27 +89,16 @@ class RaspberryPiMonitor(HardwareMonitor):
                 ["vcgencmd", "get_throttled"],
                 capture_output=True, text=True, timeout=3,
             )
-            if result.returncode == 0:
-                # Parse "throttled=0xN"
-                hex_str = result.stdout.strip().split("=")[1]
-                value = int(hex_str, 16)
-                flags = ThrottleFlags(
-                    undervoltage=bool(value & 0x1),
-                    freq_capped=bool(value & 0x2),
-                    throttled=bool(value & 0x4),
-                    undervoltage_occurred=bool(value & 0x10000),
-                    freq_capped_occurred=bool(value & 0x20000),
-                    throttled_occurred=bool(value & 0x40000),
-                    raw_hex=hex_str,
-                )
+            flags = parse_throttled(result.stdout) if result.returncode == 0 else None
+            if flags:
                 if flags.undervoltage:
                     logger.warning(
                         "HARDWARE_POWER_WARNING: undervoltage detected (%s). "
                         "Check power supply — this is a physical problem, "
-                        "not a model performance issue.", hex_str,
+                        "not a model performance issue.", flags.raw_hex,
                     )
                 return flags
-        except (subprocess.TimeoutExpired, ValueError, IndexError):
+        except (subprocess.TimeoutExpired, OSError):
             pass
 
         return ThrottleFlags()

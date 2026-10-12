@@ -25,3 +25,18 @@ def run_trace(engine, temps, start=0.0, step=1.0, **kw):
     """Feed temps at `step` second intervals; return the decisions."""
     return [engine.evaluate(snap(temp, start + i * step, **kw))
             for i, temp in enumerate(temps)]
+
+
+class Clock:
+    def __init__(self):
+        self.t = 1000.0
+
+    def __call__(self):
+        return self.t
+
+    def sleep(self, dt):
+        self.t += dt
+
+    def wait(self, dt):
+        self.t += dt
+        return False

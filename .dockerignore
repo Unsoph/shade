@@ -1,0 +1,6 @@
+.git
+__pycache__
+logs
+models
+benchmarks
+*.db

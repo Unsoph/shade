@@ -1,5 +1,5 @@
-# SHADE — Stage 0 Dependencies
-# Primary target: Raspberry Pi 5, CPU-only inference
+# SHADE runtime dependencies
+# Primary target: Raspberry Pi 5, CPU-only inference (dev/test: requirements-dev.txt)
 
 # Core inference
 onnxruntime>=1.17.0       # CPU-only, no GPU variant
@@ -15,3 +15,6 @@ rich>=13.0
 
 # Optional: Pi Camera Module support (uncomment on Pi)
 # picamera2>=0.3.12
+
+# Optional tooling (scripts/export_models.py, scripts/quantize_int8.py):
+# pip install ultralytics onnx

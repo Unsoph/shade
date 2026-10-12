@@ -41,6 +41,9 @@ def parse_args(argv=None) -> argparse.Namespace:
     ap.add_argument("--serve", nargs="?", const=-1, type=int, metavar="PORT",
                     help="serve /metrics, /status and a live page (default port "
                          "from config observability.port)")
+    ap.add_argument("--serve-host", default=None, metavar="HOST",
+                    help="bind address for --serve (default 127.0.0.1; the "
+                         "server is unauthenticated)")
     ap.add_argument("--heartbeat", default=None, help=argparse.SUPPRESS)
     return ap.parse_args(argv)
 
@@ -78,6 +81,8 @@ def main(argv=None) -> int:
         config["observability"]["enabled"] = True
         if args.serve >= 0:
             config["observability"]["port"] = args.serve
+    if args.serve_host:
+        config["observability"]["host"] = args.serve_host
 
     source = args.source if args.source is not None else config["camera"]["source"]
     display = not args.headless and config["camera"]["display"]
