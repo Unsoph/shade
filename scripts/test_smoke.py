@@ -13,6 +13,7 @@ import numpy as np
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from src.core.config import resolve_path
 from src.inference.backend_factory import create_backend
 
 
@@ -27,7 +28,7 @@ def main():
         }
     }
 
-    model_path = "models/yolov8n.onnx"
+    model_path = str(resolve_path("models/yolov8n.onnx"))
     if not os.path.isfile(model_path):
         print(f"ERROR: Model not found at {model_path}")
         sys.exit(1)
@@ -57,9 +58,11 @@ def main():
     fps = 1000.0 / avg_ms
     print(f"\nAverage:  {avg_ms:.1f}ms per frame")
     print(f"FPS:      {fps:.1f}")
-    print(f"Status:   {'PASS' if fps > 1 else 'FAIL'}")
+    ok = fps > 1
+    print(f"Status:   {'PASS' if ok else 'FAIL'}")
 
     backend.unload()
+    sys.exit(0 if ok else 1)
 
 
 if __name__ == "__main__":

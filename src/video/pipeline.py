@@ -6,12 +6,16 @@ Handles camera disconnect gracefully.
 
 import logging
 import time
+from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
 
 from src.inference.backends.base_backend import InferenceBackend
 from src.video.draw import draw_detections, draw_fps
+
+if TYPE_CHECKING:
+    from src.core.health_monitor import HealthMonitor
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +62,7 @@ def run_pipeline(
     source,
     display: bool = True,
     max_frames: int = 0,
+    health_monitor: "HealthMonitor | None" = None,
 ) -> None:
     """Main inference loop.
 
@@ -84,6 +89,10 @@ def run_pipeline(
             detections = engine.infer(frame)
             frame_count += 1
 
+            # Feed FPS data to health monitor
+            if health_monitor is not None:
+                health_monitor.fps_tracker.tick()
+
             now = time.monotonic()
             dt = now - prev_time
             if dt > 0:
@@ -94,10 +103,15 @@ def run_pipeline(
             if display:
                 draw_detections(frame, detections)
                 draw_fps(frame, fps)
-                cv2.imshow("SHADE Inference", frame)
-                if cv2.waitKey(1) & 0xFF == ord("q"):
-                    logger.info("Quit requested by user.")
-                    break
+                try:
+                    cv2.imshow("SHADE Inference", frame)
+                    if cv2.waitKey(1) & 0xFF == ord("q"):
+                        logger.info("Quit requested by user.")
+                        break
+                except cv2.error:
+                    logger.warning("No GUI support in this OpenCV build; "
+                                   "continuing headless.")
+                    display = False
             else:
                 if frame_count % 30 == 0:
                     logger.info(
@@ -111,7 +125,10 @@ def run_pipeline(
     finally:
         cap.release()
         if display:
-            cv2.destroyAllWindows()
+            try:
+                cv2.destroyAllWindows()
+            except cv2.error:
+                pass
         logger.info(
             "Pipeline stopped after %d frames. Last FPS: %.1f",
             frame_count, fps,
