@@ -47,6 +47,8 @@ def run_pipeline(rt: "Runtime", source, display: bool = True,
                 if src.eof:
                     break
                 health.set_runtime(input_fault=ih.no_frame())
+                if rt.heartbeat is not None:  # alive, just waiting for frames
+                    rt.heartbeat.beat(frames, idle=True)
                 continue
 
             pending_swap = manager.poll() or pending_swap  # frame boundary
@@ -60,9 +62,10 @@ def run_pipeline(rt: "Runtime", source, display: bool = True,
                         rt.controller.on_swap(
                             pending_swap, (time.perf_counter() - started) * 1000)
                         pending_swap = None
-                except Exception:  # noqa: BLE001 - count, then escalate
+                except Exception as exc:  # noqa: BLE001 - count, then escalate
                     errors += 1
-                    logger.exception("Inference error %d/%d", errors, max_errors)
+                    logger.error("Inference error %d/%d: %s", errors,
+                                 max_errors, exc, exc_info=errors == 1)
                     if errors >= max_errors:
                         raise
             frames += 1

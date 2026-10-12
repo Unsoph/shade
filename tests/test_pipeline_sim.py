@@ -19,6 +19,7 @@ def config(scenario="thermal_spike", speed=25.0):
     cfg["simulation"] = {"scenario": scenario, "speed": speed}
     cfg["ladder"] = LADDER
     cfg["ladder_settings"]["warmup"] = False
+    cfg["watchdog"]["state_path"] = ""  # never touch the real state file
     return cfg
 
 

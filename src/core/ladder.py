@@ -70,3 +70,17 @@ def available_rungs(rungs: list[Rung]) -> list[Rung]:
         else:
             logger.info("Ladder: skipping '%s' (missing %s)", rung.name, rung.model)
     return keep
+
+
+def resolve_rung(spec, rungs: list[Rung]) -> int:
+    """Rung index from a name, a non-negative index, or a negative index
+    counted from the end (-1 = the emergency rung)."""
+    names = [r.name for r in rungs]
+    if isinstance(spec, str) and spec in names:
+        return names.index(spec)
+    try:
+        idx = int(spec)
+    except (TypeError, ValueError):
+        logger.warning("Unknown start rung %r; using the best rung.", spec)
+        return 0
+    return max(0, min(len(rungs) - 1, idx if idx >= 0 else len(rungs) + idx))

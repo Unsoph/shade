@@ -11,6 +11,7 @@ Usage:
 
 import argparse
 import logging
+import signal
 import sys
 
 from src.app import build_runtime, run
@@ -32,9 +33,17 @@ def parse_args(argv=None) -> argparse.Namespace:
                     help="scenario time compression for --simulate")
     ap.add_argument("--fake", action="store_true",
                     help="fake backends: no model files needed")
-    ap.add_argument("--start-rung", type=int, default=0)
+    ap.add_argument("--start-rung", default="0",
+                    help="rung name or index; -1 = emergency rung")
     ap.add_argument("--db", default=None, help="decision log path")
+    ap.add_argument("--supervised", action="store_true",
+                    help="run under the watchdog supervisor (auto-restart)")
+    ap.add_argument("--heartbeat", default=None, help=argparse.SUPPRESS)
     return ap.parse_args(argv)
+
+
+def _on_sigterm(*_) -> None:
+    raise KeyboardInterrupt
 
 
 def main(argv=None) -> int:
@@ -46,6 +55,10 @@ def main(argv=None) -> int:
         return 1
     setup_logging(config)
     logger = logging.getLogger("shade")
+
+    if args.supervised:
+        from src.watchdog.launcher import supervise
+        return supervise(config, argv if argv is not None else sys.argv[1:])
 
     if args.simulate:
         config["device"]["hardware"] = "simulated"
@@ -62,10 +75,13 @@ def main(argv=None) -> int:
     display = not args.headless and config["camera"]["display"]
     max_frames = args.max_frames or config["camera"]["max_frames"]
     try:
-        rt = build_runtime(config, args.start_rung, args.fake, args.db)
+        rt = build_runtime(config, args.start_rung, args.fake, args.db,
+                           args.heartbeat)
     except (RuntimeError, ValueError) as exc:
         logger.error("%s", exc)
         return 1
+    # The supervisor stops us with SIGTERM: shut down cleanly.
+    signal.signal(signal.SIGTERM, _on_sigterm)
     run(rt, source, display, max_frames, args.dashboard)
     return 0
 

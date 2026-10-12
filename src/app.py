@@ -11,9 +11,11 @@ from src.core.decision.log import DecisionLog
 from src.core.hardware.hw_factory import create_hw_monitor
 from src.core.health_monitor import HealthMonitor
 from src.core.input_health import InputHealth
-from src.core.ladder import Rung, available_rungs, parse_ladder
+from src.core.ladder import Rung, available_rungs, parse_ladder, resolve_rung
 from src.core.model_manager import ModelManager
 from src.core.simulation import FAKE_LADDER, scale_policy
+from src.watchdog.heartbeat import Heartbeat
+from src.watchdog.state_store import KnownGoodRecorder, StateStore
 
 logger = logging.getLogger(__name__)
 
@@ -42,9 +44,14 @@ class Runtime:
         self.log.close()
 
 
-def build_runtime(config: dict, start_rung: int = 0, fake: bool = False,
-                  db_path: str | None = None) -> Runtime:
-    """Wire engine, manager, health monitor and log together."""
+def build_runtime(config: dict, start_rung: int | str = 0, fake: bool = False,
+                  db_path: str | None = None,
+                  heartbeat_path: str | None = None) -> Runtime:
+    """Wire engine, manager, health monitor and log together.
+
+    start_rung may be an index, a negative index (-1 = emergency rung) or a
+    rung name. heartbeat_path enables the watchdog heartbeat.
+    """
     if fake:
         config["ladder"] = FAKE_LADDER
     rungs = available_rungs(parse_ladder(config))
@@ -52,7 +59,7 @@ def build_runtime(config: dict, start_rung: int = 0, fake: bool = False,
         raise RuntimeError(
             "No usable ladder rungs: no model files found. Put yolov8n.onnx in "
             "models/ (see README) or run with --fake.")
-    start_rung = min(max(start_rung, 0), len(rungs) - 1)
+    start_rung = resolve_rung(start_rung, rungs)
 
     speed = config["simulation"]["speed"] \
         if config["device"]["hardware"] == "simulated" else 1.0
@@ -74,8 +81,16 @@ def build_runtime(config: dict, start_rung: int = 0, fake: bool = False,
     logger.info("Ladder: %s | start rung %d '%s' | %s",
                 [r.name for r in rungs], start_rung, rung.name,
                 backend.backend_name)
-    return Runtime(config, policy, rungs, log, health, manager, controller,
-                   InputHealth(config["input"]))
+    rt = Runtime(config, policy, rungs, log, health, manager, controller,
+                 InputHealth(config["input"]))
+    wd = config["watchdog"]
+    if heartbeat_path:
+        rt.heartbeat = Heartbeat(heartbeat_path, wd["heartbeat_interval_s"])
+    if wd["state_path"]:
+        controller.on_decision = KnownGoodRecorder(
+            StateStore(resolve_path(wd["state_path"])),
+            [r.name for r in rungs], wd["good_after_s"] / speed)
+    return rt
 
 
 def run(rt: Runtime, source, display: bool, max_frames: int,

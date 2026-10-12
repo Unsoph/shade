@@ -73,6 +73,22 @@ DEFAULTS: dict = {
         "lost_s": 3.0, "reopen_cooldown_s": 30.0,
     },
     "runtime": {"max_consecutive_errors": 5},
+    "watchdog": {
+        "heartbeat_path": "logs/heartbeat.json",
+        "heartbeat_interval_s": 0.5,
+        "hang_timeout_s": 15.0,      # no heartbeat for this long = hung
+        "startup_grace_s": 90.0,     # model load can be slow on an SD card
+        "poll_s": 1.0,
+        "backoff_initial_s": 2.0,
+        "backoff_factor": 2.0,
+        "backoff_max_s": 60.0,
+        "stable_after_s": 120.0,     # a child this old counts as healthy
+        "max_restarts": 8,           # consecutive unstable restarts, then give up
+        "kill_timeout_s": 10.0,
+        "state_path": "logs/last_known_good.json",
+        "lkg_max_age_s": 600.0,      # ignore an older last-known-good rung
+        "good_after_s": 60.0,        # stable this long on a rung = known good
+    },
     "simulation": {"scenario": "nominal", "speed": 1.0},
     "logging": {
         "level": "INFO",
