@@ -66,7 +66,13 @@ def build_runtime(config: dict, start_rung: int | str = 0, fake: bool = False,
     policy = scale_policy(config["policy"], speed)
     log = DecisionLog(db_path or resolve_path(policy["db_path"]))
     health = HealthMonitor(create_hw_monitor(config))
-    engine = DecisionEngine(policy, len(rungs), start_rung)
+    advisor = None
+    if policy["forecast"]["enabled"]:
+        from src.core.decision.advisor import ThermalAdvisor
+        advisor = ThermalAdvisor(
+            [(r.input_size / 640) ** 2 / r.detect_every for r in rungs],
+            policy["forecast"])
+    engine = DecisionEngine(policy, len(rungs), start_rung, advisor)
     manager = ModelManager(rungs, config)
     controller = Controller(engine, manager, health, log, rungs)
     manager.on_failure = controller.on_failure

@@ -23,8 +23,10 @@ CRITICAL_LEVEL = 3
 
 
 class DecisionEngine:
-    def __init__(self, policy: dict, n_rungs: int, start_rung: int = 0):
+    def __init__(self, policy: dict, n_rungs: int, start_rung: int = 0,
+                 advisor=None):
         self._p = policy
+        self._advisor = advisor  # optional ThermalAdvisor (model-based floor)
         self.n_rungs = max(1, n_rungs)
         self.rung = min(max(start_rung, 0), self.n_rungs - 1)
         self.state = State.NOMINAL
@@ -95,7 +97,16 @@ class DecisionEngine:
 
         prev_rung, prev_state = self.rung, self.state
         action, reasons = "hold", list(sig.reasons)
-        desired = self._worse_or_equal(self._map[sig.level])
+        floor = 0
+        if self._advisor and snap.cpu_temp > 0:
+            throttled = "Thermally throttled" in snap.throttle_status
+            self._advisor.observe(now, snap.cpu_temp, self.rung,
+                                  snap.cpu_util, throttled)
+            floor = self._advisor.floor(snap.cpu_temp, self.n_rungs)
+            if floor > self.rung:
+                reasons.append(f"forecast: rung {self.rung} not sustainable")
+            sig.calm = sig.calm or not sig.reasons  # model replaces the gate
+        desired = self._worse_or_equal(max(self._map[sig.level], floor))
         if not sig.calm:
             self._calm_since = None
 

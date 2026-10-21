@@ -34,3 +34,19 @@ first frame after restart from `child_restart` / `camera_reconnect` events.
 ## E6. Threshold sensitivity
 Vary `confirm_samples`, `dwell_s`, `upgrade_gate_c`; count rung changes per hour
 (flapping) and time spent below nominal.
+
+## E7. Fit the simulator to the device
+Log `cpu_temp` and `cpu_util` (health snapshots) while stepping between two
+rungs for 20+ min each. Fit tau, k, ambient (`ThermalModel` does this online;
+fit offline for the plant). Re-run `scripts/ablation.py` with `PlantConfig`
+and `src/sim/profile.py` replaced by measured values; report simulated vs real
+time-above-70C for the same policy (validity check).
+
+## E8. Content gating and shifting on real video
+`python scripts/eval_gating.py --video <clip> --every 2,4,8 --iou 0.5,0.75`.
+Use footage with real object motion and ground truth if possible. Report the
+share of static time per clip alongside the call savings.
+
+## E9. Forecast vs reactive on the device
+Enable `policy.forecast`, sweep `target_c`; plot utility vs time above warm_c
+next to reactive with shifted thresholds (`scripts/pareto.py` is the template).

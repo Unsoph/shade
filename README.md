@@ -13,8 +13,8 @@ throttle flags, memory, FPS, camera health), steps the detector down a
 it is safe, restarts the engine if it crashes or hangs, and records every decision
 in an audit database you can query.
 
-> **Status, stated plainly.** All eight stages are implemented and covered by 86
-> automated tests (84 run anywhere, 2 need a local model file) plus fault-injection runs on a *simulated* machine. **Nothing
+> **Status, stated plainly.** All eight stages are implemented and covered by 101
+> automated tests (99 run anywhere, 2 need a local model file) plus fault-injection runs on a *simulated* machine. **Nothing
 > has been measured on a real Raspberry Pi 5 yet.** Thresholds are reasoned defaults,
 > not tuned values, and no benchmark numbers are claimed. See
 > [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md) for the protocol that produces them.
@@ -31,6 +31,7 @@ in an audit database you can query.
 | 5 | Benchmark (p50/p95/p99, sustained drift), INT8 quantization, model export, agreement scoring | `src/bench/`, `scripts/` |
 | 6 | Read-only HTTP: `/metrics` (Prometheus), `/status`, `/decisions`, live page | `src/observability/` |
 | 7 | Chaos runs, CI (py3.10-3.12), line-limit check, Dockerfile, systemd unit | `scripts/chaos.py`, `.github/`, `deploy/` |
+| R | Research layer: content-gated detection + box shifting, learned thermal forecast (experimental, off), closed-loop simulator, ablations, Pareto ladder pruning | `src/video/scheduler.py`, `src/core/decision/advisor.py`, `src/sim/`, `scripts/ablation.py` |
 
 Also: input health (frozen / dark / lost camera → reconnect with backoff), frame-skip
 rungs that reuse the last detections, and a scripted hardware simulator so every
@@ -42,7 +43,7 @@ behaviour can be demonstrated without a hot Pi.
 git clone https://github.com/Unsoph/shade.git && cd shade
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements-dev.txt
-python -m pytest                                   # 84 pass, 2 skip without a model; ~30 s
+python -m pytest                                   # 99 pass, 2 skip without a model; ~30 s
 
 # Watch SHADE degrade and recover with no hardware and no models:
 python run.py --simulate thermal_ramp --speed 20 --fake --headless \
@@ -77,6 +78,25 @@ Quantization note: quantizing YOLOv8's Detect head zeroed all class scores in ou
 test, so `quantize_int8.py` keeps the head in FP32 by default. INT8 is also not
 guaranteed to be faster on the Pi 5's CPU stack ([related work](docs/DESIGN.md#related-work));
 measure before trusting it.
+
+## Research layer (what is new, and what the data says)
+
+Simulation and offline results with all caveats: [docs/RESULTS_SIM.md](docs/RESULTS_SIM.md).
+Paper plan and what can/cannot be claimed: [docs/PAPER_OUTLINE.md](docs/PAPER_OUTLINE.md).
+
+- **Content-gated detection + box shifting** (`scheduling.gate/shift`, off by
+  default): spends the ladder's detection budget where the scene changes.
+  Offline on the real model: ~25 % fewer detector calls with unchanged F1 on a
+  clip that is half static, and F1@IoU.75 on fast pans 0.64 -> 0.81 at N=8.
+  Synthetic pan of one image only; real-video evidence pending (E8).
+- **Learned thermal forecast** (`policy.forecast`, experimental, off):
+  Bayesian-RLS first-order thermal model with uncertainty, picks the best
+  sustainable rung. In simulation it did **not** beat tuned reactive control
+  (lower switching, lower utility). Kept for the hardware study.
+- **Closed-loop simulator** (`src/sim/`) and `scripts/ablation.py`,
+  `scripts/pareto.py`: policy comparisons with seeds and model-mismatch cases.
+  Parameters are assumptions until fitted to a device (E7).
+- `scripts/build_ladder.py` drops Pareto-dominated rungs from measurements.
 
 ## How the decision logic behaves
 
@@ -113,7 +133,7 @@ Prometheus text, so one is a straightforward addition.
 
 | Verified here | Not verified |
 |---------------|--------------|
-| Unit + integration tests (84 pass, 2 need a local model), CI matrix 3.10-3.12 | Any run on a real Pi 5 / Jetson |
+| Unit + integration tests (99 pass, 2 need a local model), CI matrix 3.10-3.12 | Any run on a real Pi 5 / Jetson |
 | Real yolov8n output: 4 persons + 1 bus on the standard test image | Threshold tuning against real thermal behaviour |
 | Simulated thermal ramp/spike, undervoltage, memory pressure: degrade, recover one rung at a time (`scripts/chaos.py`) | FPS/latency/accuracy of the 320 and INT8 rungs |
 | Supervisor with real child processes: crash, hang, then success | Docker image build; Pi camera (`picamera2`) path |
@@ -133,6 +153,7 @@ config/deployment.yaml every tunable, documented
 src/inference/         preprocess, NMS, backends (onnx, fake; others are stubs)
 src/core/              config, decision engine, ladder, model manager, simulation
 src/video/             frame source with reconnect, synthetic camera, pipeline
+src/sim/               closed-loop thermal plant, policies, scenarios
 src/watchdog/          heartbeat, supervisor, last-known-good store
 src/observability/     stdlib HTTP server and Prometheus rendering
 src/bench/             stats, matching, benchmark runner

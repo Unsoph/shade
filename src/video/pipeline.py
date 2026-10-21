@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 import cv2
 
 from src.video.draw import draw_detections, draw_fps, draw_status
+from src.video.scheduler import Scheduler
 from src.video.source import FrameSource
 
 if TYPE_CHECKING:
@@ -37,6 +38,7 @@ def run_pipeline(rt: "Runtime", source, display: bool = True,
     max_errors = cfg["runtime"]["max_consecutive_errors"]
     reopen_gap = cfg["input"]["reopen_cooldown_s"]
     last_reopen = -reopen_gap
+    sched = Scheduler(cfg["scheduling"])
     detections, errors, frames, pending_swap = [], 0, 0, None
     logger.info("Pipeline started%s.", " (press q to quit)" if display else "")
 
@@ -53,10 +55,11 @@ def run_pipeline(rt: "Runtime", source, display: bool = True,
 
             pending_swap = manager.poll() or pending_swap  # frame boundary
             rung = manager.rung
-            if frames % rung.detect_every == 0:
+            if sched.should_detect(frame, rung.detect_every):
                 started = time.perf_counter()
                 try:
                     detections = manager.backend.infer(frame)
+                    sched.after_detect(frame, detections)
                     errors = 0
                     if pending_swap:  # first inference on the new model
                         rt.controller.on_swap(
@@ -68,6 +71,8 @@ def run_pipeline(rt: "Runtime", source, display: bool = True,
                                  max_errors, exc, exc_info=errors == 1)
                     if errors >= max_errors:
                         raise
+            else:
+                detections = sched.on_skip(frame, detections)
             frames += 1
 
             fault = ih.update(frame) if cfg["input"]["enabled"] else ""

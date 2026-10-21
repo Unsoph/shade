@@ -78,6 +78,6 @@ python scripts/setup.py               # Diagnostic checks only
 
 ## Testing
 
-`python -m pytest` (2 tests need models/yolov8n.onnx + tests/fixtures/bus.jpg or
+`python -m pytest` (99 pass; 2 need models/yolov8n.onnx + tests/fixtures/bus.jpg or
 SHADE_TEST_IMAGE), `python scripts/check_line_limit.py`, `python scripts/chaos.py`.
 Tests must never write to the real logs/ directory.

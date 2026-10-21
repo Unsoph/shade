@@ -62,3 +62,13 @@ def test_no_frame_gaps_during_heavy_swap():
     assert max(gaps) < 0.1  # no gap anywhere near a model load + frames
     assert rt.log.count("swap_done") == 1
     rt.close()
+
+
+def test_scheduler_gate_reduces_detector_calls_in_pipeline():
+    cfg = config("nominal")
+    cfg["ladder"] = LADDER[:1]
+    cfg["scheduling"].update(gate=True, motion_threshold=1e9, static_factor=4)
+    rt = build_runtime(cfg, db_path=":memory:")
+    run(rt, "synthetic:160x120@300", display=False, max_frames=80, close=False)
+    assert 15 <= rt.manager.backend.calls <= 21  # ~ 80 / 4, plus the first
+    rt.close()

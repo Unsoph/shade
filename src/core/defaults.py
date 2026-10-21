@@ -47,6 +47,18 @@ DEFAULTS: dict = {
         # pressure level (0..3) -> minimum degradation rung
         "level_to_rung": [0, 1, 2, 3],
         "db_path": "logs/shade.db",
+        # model-based forecasting (see docs/DESIGN.md); off by default
+        "forecast": {
+            "enabled": False,
+            "target_c": 68.0,      # keep the forecast below this (< warm_c)
+            "horizon_s": 1800.0,   # how far ahead the forecast must hold
+            "z": 1.0,              # uncertainty margin in std deviations
+            "upgrade_margin_c": 2.0,  # extra headroom required to move up
+            "min_updates": 4,
+            "tau_s": 90.0, "ambient_c": 25.0, "k_c": 60.0,  # priors, unmeasured
+            "prior_rel_std": 0.5, "noise_c": 0.3, "forget": 0.998,
+            "min_dt_s": 5.0,
+        },
     },
     # Degradation ladder, best first. Rungs whose model file is missing are
     # skipped, so the ladder is whatever is on disk (see scripts/export_models.py).
@@ -65,6 +77,14 @@ DEFAULTS: dict = {
         "memory_factor": 3.0,           # est. RAM = model file size * factor
         "warmup": True,
         "preload_nice": 10,  # preload thread niceness (Linux); untuned, measure on device
+    },
+    # Detector scheduling inside the ladder's budget (see src/video/scheduler.py)
+    "scheduling": {
+        "gate": False,             # stretch the interval while the scene is static
+        "shift": False,            # move boxes with the scene on skipped frames
+        "motion_threshold": 2.0,   # mean grey-level change (0-255) that counts as motion
+        "static_factor": 4,        # max stretch of detect_every while static
+        "min_response": 0.15,      # phase-correlation confidence to trust a shift
     },
     "input": {
         "enabled": True,

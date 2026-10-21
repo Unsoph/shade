@@ -70,6 +70,7 @@ class HealthMonitor:
         gpu_temp = self._hw.get_gpu_temp()
         mem_pct = self._hw.get_memory_percent()
         swap_pct = self._hw.get_swap_percent()
+        cpu_util = getattr(self._hw, "get_cpu_util", lambda: 0.0)()
         throttle = self._hw.get_throttle_flags()
 
         with self._lock:
@@ -80,6 +81,7 @@ class HealthMonitor:
             self._snapshot.gpu_temp = gpu_temp
             self._snapshot.memory_percent = mem_pct
             self._snapshot.swap_percent = swap_pct
+            self._snapshot.cpu_util = cpu_util
             self._snapshot.throttle_status = throttle.human_readable
             self._snapshot.throttle_raw = throttle.raw_hex
 

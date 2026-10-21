@@ -59,6 +59,15 @@ policy:
   recover_hold_s: 30.0          # continuous calm needed per upgrade step
   level_to_rung: [0, 1, 2, 3]   # pressure level -> minimum rung
   db_path: logs/shade.db
+  forecast:                     # EXPERIMENTAL: learned thermal model (docs/RESULTS_SIM.md)
+    enabled: false              # priors below are unmeasured guesses
+    target_c: 68.0              # keep the forecast under this (below warm_c)
+    horizon_s: 1800.0           # how far ahead the forecast must hold
+    z: 1.0                      # uncertainty margin, standard deviations
+    upgrade_margin_c: 2.0       # extra headroom needed to move up a rung
+    tau_s: 90.0
+    ambient_c: 25.0
+    k_c: 60.0
 
 input:
   enabled: true
@@ -71,6 +80,14 @@ input:
 
 runtime:
   max_consecutive_errors: 5     # then the process exits and the watchdog restarts it
+
+# Detector scheduling inside each rung's budget (src/video/scheduler.py).
+scheduling:
+  gate: false                   # stretch detect_every while the scene is static
+  shift: false                  # move boxes with the scene on skipped frames
+  motion_threshold: 2.0         # mean grey-level change (0-255) counted as motion
+  static_factor: 4              # max stretch of detect_every while static
+  min_response: 0.15            # phase-correlation confidence to trust a shift
 
 observability:                  # read-only HTTP: /, /status, /decisions, /metrics, /healthz
   enabled: false                # or run with --serve [PORT]

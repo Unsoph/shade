@@ -23,6 +23,8 @@ class HealthSnapshot:
     cpu_temp: float = 0.0
     gpu_temp: float = 0.0
 
+    cpu_util: float = 0.0  # 0..1, mean over all cores
+
     # Memory
     memory_percent: float = 0.0
     swap_percent: float = 0.0

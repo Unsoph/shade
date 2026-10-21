@@ -31,6 +31,23 @@ Heartbeat written by the frame loop; a separate supervisor process restarts on
 exit or silence, with exponential backoff, on the emergency rung (or the
 last-known-good rung if recent). Crash loops end in `supervisor_gave_up`.
 
+## Research layer
+- **Scheduling** (`src/video/scheduler.py`, `propagate.py`): the ladder gives a
+  detection budget (1 per `detect_every` frames). The gate stretches the interval
+  while a 64x48 grey frame difference vs the anchor frame stays under
+  `motion_threshold`; the shifter moves each box by the phase-correlation
+  translation of its region. Neither can exceed the budget.
+- **Forecast advisor** (`thermal_model.py`, `advisor.py`): fits
+  dT/dt = (T_amb + k*u - T)/tau online (Bayesian RLS with a physics prior and
+  forgetting; samples while firmware-throttled are excluded), calibrates per-rung
+  utilisation from measurements, and returns the best rung whose forecast
+  (upper confidence bound, `horizon_s` ahead) stays under `target_c`. The engine
+  uses it as an extra floor on the target rung and as a model-based replacement
+  for the fixed upgrade gate. Experimental, off, and not shown to help (RESULTS_SIM).
+- **Simulator** (`src/sim`): first-order plant with optional second mass,
+  leakage, ambient steps and throttling; policies drive the *real*
+  `DecisionEngine` in virtual time.
+
 ## Related work
 These informed the design and caveats; none is a claim about SHADE's results.
 - DVFS on the Pi 5 (arXiv 2609.04705): INT8 was *slower* on their stack, hence

@@ -58,3 +58,17 @@ def test_benchmark_script_fake(tmp_path):
     rows = list(csv.DictReader(open(out)))
     assert [r["rung"] for r in rows] == ["nominal", "small-320"]
     assert float(rows[0]["p50_ms"]) > float(rows[1]["p50_ms"])
+
+
+def test_pareto_drops_dominated_rungs():
+    spec = importlib.util.spec_from_file_location(
+        "build_ladder", ROOT / "scripts" / "build_ladder.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    rows = [
+        {"name": "a", "eff_fps": 5, "quality": 1.0, "p95_ms": 200},
+        {"name": "b", "eff_fps": 9, "quality": 0.9, "p95_ms": 120},
+        {"name": "c", "eff_fps": 8, "quality": 0.8, "p95_ms": 130},  # dominated by b
+        {"name": "d", "eff_fps": 14, "quality": 0.6, "p95_ms": 70},
+    ]
+    assert [r["name"] for r in mod.pareto(rows)] == ["a", "b", "d"]

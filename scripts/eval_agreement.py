@@ -45,6 +45,7 @@ def main(argv=None) -> int:
     ap.add_argument("--images", required=True)
     ap.add_argument("--labels", default="")
     ap.add_argument("--iou", type=float, default=0.5)
+    ap.add_argument("--json", default="", help="write {rung: f1} here")
     args = ap.parse_args(argv)
 
     config = load_config(args.config)
@@ -64,9 +65,14 @@ def main(argv=None) -> int:
         refs = detections_for(rungs[0], config, images)
         scored, kind = rungs[1:], f"reference rung '{rungs[0].name}'"
     print(f"Scoring against {kind} on {len(images)} images, IoU>={args.iou}")
+    results = {rungs[0].name: 1.0} if not args.labels else {}
     for rung in scored:
         p, r, f1 = score(detections_for(rung, config, images), refs, args.iou)
+        results[rung.name] = round(f1, 4)
         print(f"{rung.name:12s} precision={p:.3f} recall={r:.3f} f1={f1:.3f}")
+    if args.json:
+        import json
+        Path(args.json).write_text(json.dumps(results, indent=2))
     return 0
 
 

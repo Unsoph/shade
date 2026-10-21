@@ -71,6 +71,11 @@ class HardwareMonitor(ABC):
     def get_memory_percent(self) -> float:
         """System memory usage as percentage [0, 100]."""
 
+    def get_cpu_util(self) -> float:
+        """Mean CPU utilisation over all cores, 0..1 (psutil by default)."""
+        import psutil
+        return psutil.cpu_percent(interval=None) / 100.0
+
     @abstractmethod
     def get_swap_percent(self) -> float:
         """Swap usage as percentage [0, 100].

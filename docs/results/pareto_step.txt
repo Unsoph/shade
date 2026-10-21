@@ -1,0 +1,13 @@
+
+== ambient-step  (throttle_scale=0.55)
+policy                      utility   >70C %  thrtl %    sw/h
+reactive d=-12                 3.72      0.0      0.0    10.4
+reactive d=-8                  3.95      0.0      0.0    12.4
+reactive d=-4                  4.30      2.7      0.0    29.8
+reactive d=+0                  4.78     26.2      0.0    36.2
+reactive d=+4                  5.25     61.7      0.0    40.7
+forecast T=60 H=120            3.00      0.0      0.0    28.9
+forecast T=64 H=120            3.43      0.0      0.0    21.6
+forecast T=68 H=120            3.81      1.1      0.0    15.7
+forecast T=72 H=120            3.92      9.4      0.0    14.8
+forecast T=76 H=120            3.99     21.2      0.0     5.0
