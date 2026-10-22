@@ -1,0 +1,19 @@
+\section{Discussion}
+\textbf{When does adaptation pay?} Our simulation says the answer depends on
+the cost of throttling relative to the quality given up on lower rungs, and on
+whether the application values frame-rate predictability. The hardware
+experiments must establish the throttle penalty on the target
+(\TBD{measured frame-rate ratio throttled/unthrottled}).
+
+\textbf{Auditability.} Every rung change carries reasons and signal values,
+which supports post-incident review; we have not evaluated this with operators.
+
+\textbf{Limitations.} Single device family \TBD{and one or two boards}; one
+detector family; global-motion-biased scheduling evidence unless E8 covers
+independent motion; thresholds untuned; the 320 and INT8 rungs depend on the
+user's calibration data; the HTTP status server is unauthenticated and
+local-only by default; no Jetson backend exists yet.
+
+\textbf{Safety.} \shade{} is not a safety-certified system. Degrading a
+detector can degrade downstream decisions; applications must set the minimum
+acceptable rung (\TBD{discuss floor configuration}).

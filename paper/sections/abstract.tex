@@ -1,0 +1,26 @@
+\begin{abstract}
+Edge object detectors deployed on passively cooled single-board computers
+fail in ways a fixed model cannot absorb: sustained load drives the SoC into
+firmware throttling, frame rate becomes erratic, and a crashed or hung process
+goes unnoticed. We present \shade, an open-source control plane that keeps a
+detector within a thermal and memory envelope by moving along a
+\emph{degradation ladder} of operating points (model, input size, detection
+interval), with hysteresis-guarded one-step recovery, background model
+hot-swap, a supervising watchdog, and an audit log that records why every
+action was taken. On top of the ladder we add a content-aware scheduler that
+spends the ladder's detection budget where the scene changes: it stretches the
+detection interval while the scene is static and moves previous boxes with the
+scene by phase correlation on skipped frames. In an offline study with a real
+YOLOv8n model, gating removed \simGateSaving\% of detector calls on a clip that is
+half static with no change in agreement, and box shifting raised F1 at IoU~0.75
+under fast camera motion from \simShiftGain{} (synthetic pan of one image).
+On a Raspberry Pi~5 (\TBD{board, cooling, enclosure}) \shade{} reduced
+firmware-throttled time from \resStaticThrottled\% to \resShadeThrottled\% and raised
+the 5th-percentile frame rate from \resStaticPfive{} to \resShadePfive{}~FPS
+relative to a static nominal configuration, at a mean-frame-rate cost of
+\TBD{X\%}. We also report negative results from a closed-loop simulator:
+a learned thermal-forecast policy did not outperform tuned reactive
+control, and allowing the firmware to throttle yields higher mean throughput
+than any ladder unless throttling is costly, which delimits when adaptation
+pays. Code, data and scripts are released.
+\end{abstract}

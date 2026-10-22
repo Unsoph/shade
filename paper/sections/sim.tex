@@ -1,0 +1,35 @@
+\section{Closed-Loop Simulation and Ablations}\label{sec:sim}
+\textbf{Why a simulator.} Hardware runs are slow and uncontrolled. We built a
+closed-loop plant in which CPU utilisation of the chosen rung heats a
+first-order thermal mass (optionally with a second slow mass, temperature-dependent
+leakage and ambient steps), firmware throttling cuts speed and heat, and
+policies drive the \emph{real} decision engine in virtual time. Rung operating
+points and the throttle penalty are \textbf{assumptions}; every simulated number
+carries the mark~\SIM{} and none is evidence about a device until the plant is
+fitted (E7, Table~\ref{tab:fidelity}; fit $R^2=$ \resPlantR).
+
+\input{generated/t_sim_ablation}
+\textbf{Findings\SIM.} (i) With the assumed throttle penalty, a static nominal
+configuration has the highest mean utility (detections per second $\times$
+quality) in all six scenarios; adaptation is justified only through lower
+variance and thermal margin, and only if throttling is costly (at a harsher
+penalty the static arm's worst-5\% utility falls to $2.0$ against $3.8$--$4.0$).
+(ii) Versus a two-threshold thermostat, \shade's guards reduce time above
+$70^\circ$C substantially in four of six scenarios, but not in the hottest
+enclosure, where the thresholds set the operating point. (iii) Anticipation by
+temperature slope mattered in one scenario (leakage). (iv) The forecast advisor
+never throttled but, at equal thermal risk, achieved lower utility than tuned
+reactive control (Fig.~\ref{fig:pareto}) because reactive control duty-cycles and
+exploits thermal mass; its benefit is far fewer rung changes.
+
+\begin{figure}[t]\centering
+\includegraphics[width=\columnwidth]{figures/f_pareto.pdf}
+\caption{Utility versus time above $70^\circ$C, cool-room scenario\SIM: reactive
+thresholds shifted by $-12\ldots{+}4^\circ$C versus forecast target
+$60\ldots76^\circ$C ($H{=}120$\,s).}\label{fig:pareto}
+\end{figure}
+\input{generated/t_fidelity}
+\textbf{Threats\SIM.} One plant family; an estimator that is well-specified for the
+base plant; invented profiles. \TBD{After E7: report whether simulated and
+measured time-above-$70^\circ$C agree for the same policy, and re-run the
+ablation with the fitted plant.}

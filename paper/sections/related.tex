@@ -1,0 +1,27 @@
+\section{Related Work}
+\textbf{Dynamic and adaptive inference.} Early-exit networks~\cite{teerapittayanon2016branchynet}
+and the broader family of dynamic networks~\cite{han2022dynamic} trade accuracy
+for compute per input, and once-for-all training~\cite{cai2020ofa} derives many
+deployable sub-networks from one model. Quantisation~\cite{jacob2018quant}
+provides cheaper operating points; its speed benefit depends on the runtime and
+CPU, so we measure it rather than assume it. \shade{} is orthogonal: it consumes
+whatever operating points exist and decides \emph{when} to move between them.
+
+\textbf{Video detection and tracking.} Exploiting temporal redundancy by
+propagating features~\cite{zhu2017dff} or boxes~\cite{bewley2016sort} between key
+frames is well established. Our shifter is deliberately simpler than a tracker:
+per-box translation by phase correlation~\cite{kuglin1975phase} on a small
+grey image, anchored at each real detection. Its novelty is its coupling to a
+thermal budget (Sec.~\ref{sec:sched}), not the propagation primitive.
+
+\textbf{Thermal and DVFS management on edge devices.}
+\TODOcite{thermal throttling and DVFS studies on Raspberry Pi~5 / mobile SoCs}
+\TODOcite{adaptive edge-AI position and systems papers}
+\TODOcite{model-switching serving systems; self-healing / watchdog literature}
+% Candidates found by keyword search and NOT yet read (verify before citing):
+% arXiv 2609.04705 (DVFS on Pi 5; reports INT8 slower on their stack),
+% arXiv 2206.10849 (Play It Cool), arXiv 2010.06291 (thermal throttling),
+% arXiv 2604.07360 (adaptive edge AI).
+We position \shade{} against these by the questions they leave open for a
+practitioner: what to do at the application layer, with an audit trail, using
+only off-the-shelf boards.

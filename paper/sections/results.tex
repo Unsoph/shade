@@ -1,0 +1,51 @@
+\section{Results on Hardware}\label{sec:results}
+\emph{All hardware numbers in this section are pending; red markers show what
+is owed and which experiment produces it (paper/README.md).}
+
+\subsection{Operating points (E1)}
+\input{generated/t_rungs}
+Table~\ref{tab:rungs} reports latency percentiles, effective frame rate
+($N\times1000/\text{mean ms}$), memory and agreement per rung.
+\TBD{Discuss whether INT8 and 320-pixel rungs are actually faster on this
+device and whether any rung is Pareto-dominated.}
+
+\subsection{Sustained load (E2)}
+\begin{figure}[t]\centering
+\includegraphics[width=\columnwidth]{figures/f_sustained.pdf}
+\caption{Median latency of the nominal rung over a sustained run as CPU
+temperature rises (E2).}\label{fig:sustained}
+\end{figure}
+\TBD{Describe the onset temperature and magnitude of latency drift and the
+time to first firmware throttle.}
+
+\subsection{Static versus adaptive (E3)}
+\input{generated/t_adaptive}
+\begin{figure}[t]\centering
+\includegraphics[width=\columnwidth]{figures/f_traces.pdf}
+\caption{Temperature over time, static nominal versus \shade{} (E3, run 1).}\label{fig:traces}
+\end{figure}
+Relative to the static nominal arm, \shade{} changed throttled time from
+\resStaticThrottled\% to \resShadeThrottled\%, the 5th-percentile frame rate from
+\resStaticPfive{} to \resShadePfive{}~FPS and the mean frame rate from
+\resStaticFps{} to \resShadeFps{}~FPS. \TBD{State plainly whether adaptation
+paid: if mean throughput fell, say by how much and what it bought.}
+
+\subsection{Swap cost (E4)}
+\input{generated/t_swap}
+\TBD{Report the longest inter-frame gap during a background preload on the Pi and the
+effect of the preload thread's niceness; our earlier 2-core x86 measurement showed
+a preload can stall the loop, so this must be measured on the target.}
+
+\subsection{Gating and shifting on real footage (E8)}
+\input{generated/t_gating_real}
+Gating removed \resGateSaving\% of detector calls at $N{=}4$ and shifting changed
+F1 (IoU~0.75, fast motion, $N{=}8$) from \resShiftGain. \TBD{Break down by
+clip type and report failures, e.g. small objects entering static scenes.}
+For reference, the offline synthetic-pan study is in Table~\ref{tab:gating-synth}
+and Fig.~\ref{fig:gating}.
+\input{generated/t_gating_synth}
+\begin{figure}[t]\centering
+\includegraphics[width=\columnwidth]{figures/f_gating.pdf}
+\caption{Agreement with per-frame detection versus detector calls (synthetic
+pan, real YOLOv8n, IoU 0.75).}\label{fig:gating}
+\end{figure}

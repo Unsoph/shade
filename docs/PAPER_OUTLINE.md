@@ -1,3 +1,6 @@
+> The actual draft now lives in `paper/` (LaTeX, generated tables, placeholders for every
+> hardware result). Start with `paper/README.md`. This file is the original plan.
+
 # Paper outline (working draft)
 
 **Working title:** *Budgeted, auditable adaptation for edge detectors: a

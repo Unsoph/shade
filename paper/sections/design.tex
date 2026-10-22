@@ -1,0 +1,67 @@
+\section{System Design}\label{sec:design}
+Figure~\ref{fig:arch} shows the control loop. A health monitor samples CPU
+temperature, throttle flags (\texttt{vcgencmd get\_throttled} on Pi, with a
+sysfs/\texttt{psutil} fallback), memory, swap, CPU utilisation, frame rate and
+camera health once per second. A deterministic decision engine maps each sample
+to a rung of the ladder; a model manager realises the change.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[node distance=5mm and 6mm, every node/.style={font=\scriptsize},
+  box/.style={draw,rounded corners,minimum height=6mm,minimum width=14mm,align=center},
+  >=Stealth]
+\node[box] (cam) {Camera /\\source};
+\node[box,right=of cam] (pipe) {Frame loop\\+ scheduler};
+\node[box,right=of pipe] (det) {Detector\\(active rung)};
+\node[box,below=of pipe] (hm) {Health\\monitor};
+\node[box,below=of det] (eng) {Decision\\engine};
+\node[box,below=of hm] (log) {Audit log\\(SQLite)};
+\node[box,below=of eng] (mm) {Model manager\\(preload, swap)};
+\node[box,left=of log] (wd) {Watchdog\\supervisor};
+\draw[->] (cam)--(pipe); \draw[->] (pipe)--(det);
+\draw[->] (hm)--(eng); \draw[->] (eng)--(mm); \draw[->] (eng)--(log);
+\draw[->] (mm.east) -- ++(4mm,0) |- (det.east);
+\draw[->] (pipe)--(hm);
+\draw[<->,dashed] (wd) -- (pipe);
+\end{tikzpicture}
+\caption{\shade{} architecture. The decision engine never touches models; the
+model manager swaps a preloaded backend between frames. A separate supervisor
+process watches a heartbeat from the frame loop.}\label{fig:arch}
+\end{figure}
+
+\subsection{Degradation ladder}
+A rung is a tuple (model, input size, detection interval $N$, threads,
+backend). Rungs are ordered best to worst; rungs whose model file is absent are
+skipped. Moving between rungs that share a model is free; otherwise the target
+model is loaded on a low-priority thread (with a RAM-headroom check and a warm-up
+inference) and published for an atomic reference swap at the next frame
+boundary. The latest request wins; a failed load marks the rung unavailable.
+
+\subsection{Decision policy}
+The engine reads a pressure level $\ell\in\{0,1,2,3\}$ from temperature bands
+(warm/degrade/critical), firmware flags, memory/swap and optional frame-rate and
+camera signals, plus an anticipation term when the temperature slope over a
+window exceeds a threshold while warm. $\ell$ maps to a minimum rung. Moves
+\emph{down} need \texttt{confirm\_samples} consecutive samples and a dwell
+time, except at critical pressure; moves \emph{up} are one rung at a time, only
+after a calm hold below an upgrade gate with no throttle flags and a cooldown.
+All thresholds are configuration (Table~\ref{tab:params} in the appendix).
+Under-voltage is reported as a power fault rather than answered with a smaller
+model.
+
+\subsection{Supervision and audit}
+The frame loop writes a heartbeat (also while idle). A supervisor restarts the
+engine on exit or silence, with exponential backoff, starting on the emergency
+rung or the last rung that ran stably (last-known-good), and gives up after
+repeated unstable restarts so the init system can take over. Every decision,
+swap, camera reconnect and restart is stored with its reasons and signal
+values, so a deployment can be reviewed after the fact.
+
+\subsection{Optional: thermal-forecast advisor}
+As an experimental alternative to fixed thresholds, an advisor fits
+$\dot T=(T_{\mathrm{amb}}+k\,u-T)/\tau$ online ($u$ is CPU utilisation) by
+Bayesian recursive least squares with a physical prior and forgetting, calibrates
+per-rung utilisation from measurements, and selects the best rung whose upper
+confidence bound of the temperature $H$ seconds ahead stays below a target. Samples
+taken while the firmware throttles are excluded from the fit. We evaluate it
+in Sec.~\ref{sec:sim}.

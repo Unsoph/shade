@@ -1,0 +1,28 @@
+\section{Experimental Setup}\label{sec:setup}
+\textbf{Hardware.} \TBD{Raspberry Pi~5 (RAM), OS and kernel, active/passive
+cooler, enclosure, power supply, ambient temperature range, camera/source}.
+A second device (\TBD{optional: Jetson / Pi~4 / x86}) would test generality.
+
+\textbf{Software.} \shade{} commit \TBD{hash}; ONNX Runtime~\cite{onnxruntime}
+\TBD{version}; models: YOLOv8n~\cite{ultralytics2023} at $640$ and $320$ input,
+and an INT8 variant produced with static QDQ quantisation~\cite{jacob2018quant}
+\TBD{calibration set and size}. The Detect head is kept in FP32 because
+quantising it zeroed class scores in our tests.
+
+\textbf{Ladder.} Table~\ref{tab:rungs} lists the rungs; operating points are
+measured, not assumed (E1). Pareto-dominated rungs are pruned with the provided
+script.
+
+\textbf{Workloads.} \TBD{video clips: description, resolution, duration,
+fraction of static time, availability and licence}. Ground truth
+\TBD{source of labels, or agreement against the nominal rung}.
+
+\textbf{Arms.} Static nominal, static emergency, \shade{} (default policy),
+\shade{} with gate/shift, and \shade{} with the forecast advisor. Each arm runs
+\TBD{$\ge5$} times for \TBD{30} minutes in the same enclosure at the same ambient
+temperature, in randomised order, with a cool-down to baseline between runs.
+
+\textbf{Metrics.} Mean and 5th-percentile output frame rate; share of time
+firmware-throttled and above $70^\circ$C; maximum temperature; rung changes per
+hour; agreement F1 against the nominal rung (IoU~0.5, and 0.75 for scheduling);
+detector calls per frame; swap stall from the audit log.

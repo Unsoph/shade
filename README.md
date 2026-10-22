@@ -98,6 +98,11 @@ Paper plan and what can/cannot be claimed: [docs/PAPER_OUTLINE.md](docs/PAPER_OU
   Parameters are assumptions until fitted to a device (E7).
 - `scripts/build_ladder.py` drops Pareto-dominated rungs from measurements.
 
+**Paper draft:** `paper/` holds a LaTeX manuscript whose tables and figures are
+generated from experiment data (`python scripts/paper_assets.py`); anything not yet
+measured shows as a red TBD. `scripts/trial.py` runs an experimental arm and logs
+telemetry; `scripts/fit_plant.py` fits the simulator to a trial. See `paper/README.md`.
+
 ## How the decision logic behaves
 
 `ladder` is ordered best to worst. Each poll the engine maps signals to a pressure

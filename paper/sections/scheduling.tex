@@ -1,0 +1,23 @@
+\section{Content-Aware Detection Scheduling}\label{sec:sched}
+A rung with interval $N$ grants a budget of one detection per $N$ frames.
+Plain frame skipping spends it blindly and freezes boxes between detections.
+The scheduler changes how the budget is spent without exceeding it.
+
+\textbf{Gate.} Let $m_t$ be the mean absolute grey-level difference between a
+$64{\times}48$ copy of frame $t$ and of the anchor frame (the last frame with a
+real detection). When a detection is due ($\ge N$ frames since the last) and
+$m_t<\theta$, it is deferred until $m_t\ge\theta$ or $\lambda N$ frames have
+passed ($\lambda$ = \texttt{static\_factor}). Calls therefore never exceed one per $N$
+frames, and fall on static scenes. This also lowers CPU load, hence heat.
+
+\textbf{Shift.} On a skipped frame, each anchored box is translated by the
+phase-correlation~\cite{kuglin1975phase} offset between its region in the
+anchor and the current $192$-pixel-wide grey frame, discarding estimates with low
+correlation response or implausible magnitude. Cost is a few small FFTs per box;
+only translation is modelled.
+
+\textbf{Assumptions and failure modes.} Gate: a small, fast object entering a
+static scene can be missed for up to $\lambda N$ frames. Shift: objects that deform,
+change scale or move against the background of their box violate the translation
+model; occlusion and boxes at the frame edge are handled only by clipping.
+Sec.~\ref{sec:results} measures gains on real footage \TBD{clips with independent object motion}.

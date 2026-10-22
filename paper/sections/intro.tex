@@ -1,0 +1,30 @@
+\section{Introduction}
+Detectors such as YOLO~\cite{ultralytics2023} run in real time on single-board
+computers, but a deployment is not a benchmark. A Raspberry Pi~5 in a closed
+enclosure reaches its firmware thermal limit within minutes at full load; once it
+throttles, frame rate drops and jitters. Memory pressure, a weak supply
+(under-voltage), a frozen camera or a hung process produce other silent failures.
+Operators typically pick one model for the worst case (wasting capacity) or the
+best case (failing in the field).
+
+\shade{} treats the model configuration as a controllable resource. Our
+contributions are:
+\begin{enumerate}
+\item A \textbf{control plane} for commodity boards: a degradation ladder,
+  hysteresis-guarded transitions, atomic background hot-swap with a measured
+  stall, a heartbeat supervisor with last-known-good restart, and a SQLite audit
+  trail of decisions and reasons (Sec.~\ref{sec:design}).
+\item A \textbf{content-aware scheduler} that gates detection on scene change
+  and propagates boxes through skipped frames by per-box phase correlation,
+  without exceeding the ladder's detection budget (Sec.~\ref{sec:sched}).
+\item An \textbf{evaluation method}: a closed-loop thermal simulator that
+  drives the real decision engine, with ablations and a protocol to fit it to a
+  device (Sec.~\ref{sec:sim}).
+\item \textbf{Measurements and negative results} on when adaptation pays,
+  including a learned thermal-forecast policy that did not beat tuned reactive
+  control in simulation (Secs.~\ref{sec:results}, \ref{sec:sim}).
+\end{enumerate}
+We do not claim a new model-switching or DVFS algorithm; the aim is a small,
+reproducible, auditable system and an honest account of its benefits.
+Hardware results are \TBD{pending Pi~5 runs E1--E4, E7--E9}; simulation and
+offline results are labelled as such.

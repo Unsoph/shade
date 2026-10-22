@@ -1,0 +1,26 @@
+\section{Conclusion}
+\shade{} packages a degradation ladder, guarded recovery, hot-swap,
+supervision and an audit log for edge detectors, adds a scheduler that spends the
+detection budget on scene change, and ships a simulator-based method for
+ablating adaptation policies. Simulation suggests that adaptation buys
+predictability rather than throughput, and that simple guarded reactive control is
+hard to beat; \TBD{one-sentence summary of the hardware findings}.
+Code, scripts and data: \url{https://github.com/Unsoph/shade}
+(\TBD{archive DOI}).
+
+\appendix
+\section{Parameters}
+\begin{table}[h]\centering\small
+\caption{Policy parameters used in the experiments (defaults; unmeasured
+until tuned).}\label{tab:params}
+\begin{tabular}{ll}\toprule
+Parameter & Value\\\midrule
+warm / degrade / critical & 70 / 75 / 80\,$^\circ$C\\
+upgrade gate & 65\,$^\circ$C\\
+confirm samples, dwell, cooldown, recover hold & 3, 10\,s, 20\,s, 30\,s\\
+slope threshold, window & 0.5\,$^\circ$C/s, 10\,s\\
+gate threshold, static factor & 2.0, 4\\
+forecast target, horizon, $z$ & 68\,$^\circ$C, 1800\,s, 1.0\\
+\TBD{tuned values after E6} & \TBD{}\\\bottomrule
+\end{tabular}
+\end{table}
