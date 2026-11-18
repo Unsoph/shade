@@ -6,7 +6,10 @@
 sim:
   duration_s: 900          # 15 simulated minutes
   camera_fps: 10
-  gui: false               # true opens the PyBullet window
+  seed: 0                  # one seed drives every random choice
+
+render:
+  gate_effects: false      # true = shadows/reflection on gate frames (use on a GPU)
 
 robot:                     # 24 V differential drive, ~22 kg
   wheel_radius_m: 0.08
@@ -16,6 +19,15 @@ robot:                     # 24 V differential drive, ~22 kg
 
 plant:
   ambient_c: 35.0          # air inside the robot's electronics bay
+
+random:
+  ambient_sd_c: 1.5        # slow drift of the bay temperature
+  burst_rate_per_s: 0.011  # other processes grabbing CPU (~1 per 90 s)
+  camera_noise_sd: 2.0
+  payload_kg: [0.0, 10.0]
+
+people:
+  count: 6                 # workers walking the aisles
 
 battery:
   capacity_wh: 240.0       # 6S Li-ion pack
@@ -31,9 +43,9 @@ scheduling:
 
 # Route: stations with dwell_s are where the robot parks (static scene).
 route:
-  - {xy: [4.0, -3.0], dwell_s: 0}
-  - {xy: [4.0, 3.0], dwell_s: 45}
-  - {xy: [-4.0, 3.0], dwell_s: 0}
-  - {xy: [-4.0, -3.0], dwell_s: 45}
+  - {xy: [7.0, -3.0], dwell_s: 0}
+  - {xy: [7.0, 3.0], dwell_s: 45}
+  - {xy: [-7.0, 3.0], dwell_s: 0}
+  - {xy: [-7.0, -3.0], dwell_s: 45}
 
 policy: {}                 # DecisionEngine overrides, e.g. {confirm_samples: 2}

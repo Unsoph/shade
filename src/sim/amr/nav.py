@@ -2,7 +2,8 @@
 
 Go-to-goal with a proportional heading controller: turn on the spot when
 the goal is far off-axis, slow down proportionally as the heading error
-grows, and park for `dwell_s` at stations before moving on. The route loops.
+grows, and park for `dwell_s` at stations before moving on (optionally
+jittered by a seeded RNG). The route loops.
 """
 
 import math
@@ -23,7 +24,8 @@ class NavCommand:
 
 
 class WaypointNav:
-    def __init__(self, route: list[dict], nav: dict, max_v: float, max_w: float):
+    def __init__(self, route: list[dict], nav: dict, max_v: float, max_w: float,
+                 rng=None, dwell_jitter: float = 0.0):
         if not route:
             raise ValueError("route needs at least one waypoint")
         self.route = route
@@ -34,6 +36,7 @@ class WaypointNav:
         self.index = 0
         self._park_until: float | None = None
         self.laps = 0
+        self.rng, self.jitter = rng, dwell_jitter
 
     def _advance(self) -> None:
         self.index = (self.index + 1) % len(self.route)
@@ -50,6 +53,8 @@ class WaypointNav:
         dist = math.hypot(gx - x, gy - y)
         if dist <= self.arrive:
             dwell = float(self.route[self.index].get("dwell_s", 0.0))
+            if self.rng is not None and dwell > 0:
+                dwell *= 1 + self.rng.uniform(-self.jitter, self.jitter)
             if dwell > 0:
                 self._park_until = t + dwell
                 return NavCommand(0.0, 0.0, True, self.index)

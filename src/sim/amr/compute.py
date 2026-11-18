@@ -28,18 +28,20 @@ class Window:
 
 
 class ComputeModel:
-    def __init__(self, compute: dict, scheduling: dict, detect_every: list[int]):
+    def __init__(self, compute: dict, scheduling: dict, detect_every: list[int],
+                 rng=None, cost_sd: float = 0.0):
         if len(compute["det_cost_s"]) != len(detect_every):
             raise ValueError("compute.det_cost_s needs one entry per ladder rung")
         self.c = compute
         self.every = detect_every
         self.scheduler = Scheduler(scheduling)
+        self.rng, self.cost_sd = rng, cost_sd
         self._prev: np.ndarray | None = None
         self._open(0, 1.0, False, 1.0)
 
-    def _open(self, rung: int, scale: float, swapping: bool, span_s: float):
+    def _open(self, rung, scale, swapping, span_s, extra_util=0.0):
         self.rung, self.scale, self.span = rung, scale, span_s
-        overhead = self.c["base_util"] + (self.c["swap_util"] if swapping else 0.0)
+        overhead = self.c["base_util"] + extra_util + (self.c["swap_util"] if swapping else 0.0)
         self.overhead = min(overhead, 1.0)
         self.budget = max(1.0 - self.overhead, 0.0) * span_s
         self.used = 0.0
@@ -47,9 +49,10 @@ class ComputeModel:
         self._motion = []
 
     def start_window(self, rung: int, scale: float, swapping: bool,
-                     span_s: float = 1.0) -> None:
-        """Begin a decision window on `rung` at clock `scale` (<1 = throttled)."""
-        self._open(rung, scale, swapping, span_s)
+                     span_s: float = 1.0, extra_util: float = 0.0) -> None:
+        """Begin a decision window on `rung` at clock `scale` (<1 = throttled);
+        `extra_util` is CPU taken by other processes."""
+        self._open(rung, scale, swapping, span_s, extra_util)
 
     def on_frame(self, frame: np.ndarray) -> bool:
         """Process one camera frame; True if the detector ran on it."""
@@ -63,6 +66,9 @@ class ComputeModel:
             return False
         self.n["want"] += 1
         cost = self.c["det_cost_s"][self.rung] / max(self.scale, 1e-3)
+        if self.rng is not None and self.cost_sd > 0:  # mean-one log-normal jitter
+            sd = self.cost_sd
+            cost *= float(np.exp(sd * self.rng.standard_normal() - sd * sd / 2))
         if self.used + cost > self.budget:
             self.n["drop"] += 1
             return False

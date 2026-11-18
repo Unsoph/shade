@@ -1,11 +1,13 @@
-"""Run the AMR digital twin with SHADE onboard.
+"""Run the AMR digital twin (MuJoCo) with SHADE onboard.
 
     python simulation/amr_twin.py                        # SHADE, gate on, 15 min
     python simulation/amr_twin.py --policy static-0      # no adaptation
-    python simulation/amr_twin.py --compare --minutes 20 # policies side by side
-    python simulation/amr_twin.py --gui --minutes 3      # watch it in PyBullet
+    python simulation/amr_twin.py --compare --minutes 15 # policies side by side
+    python simulation/amr_twin.py --compare --ambient 45 --seed 3
 
-Writes CSV traces, figures and a camera montage to simulation/results/.
+Every policy in --compare uses the same seed, so they face the same
+warehouse, workers and disturbances. Writes CSV traces, smoothed figures and
+onboard + chase camera snapshots to simulation/results/.
 All parameters are assumptions (src/sim/amr/params.py); results are
 simulated and must be labelled as such.
 """
@@ -67,7 +69,9 @@ def run_one(cfg, policy_name, gate, minutes, out: Path, n_frames=0):
 
     def grab(t, frame, ran):
         if round(t, 1) in picks:
-            frames.append((f"t={t:.0f}s rung={twin.rung} det={'Y' if ran else 'n'}", frame))
+            tag = f"t={t:.0f}s rung={twin.rung} det={'Y' if ran else 'n'}"
+            frames.append((f"onboard {tag}", twin.engine.render("onboard", snapshot=True)))
+            frames.append((f"chase {tag}", twin.engine.render("chase", snapshot=True)))
     try:
         rows = twin.run(duration, grab if n_frames else None)
     finally:
@@ -78,7 +82,7 @@ def run_one(cfg, policy_name, gate, minutes, out: Path, n_frames=0):
         w.writerows(rows)
     trace_figure(rows, cfg, out / f"amr_{label}.png", f"AMR twin: {label}")
     if frames:
-        montage(frames, out / f"amr_{label}_camera.png")
+        montage(frames, out / f"amr_{label}_camera.png", cols=4)
     return label, rows, summarise(label, rows, twin)
 
 
@@ -90,15 +94,16 @@ def main(argv=None) -> int:
     ap.add_argument("--no-gate", action="store_true", help="disable content gate")
     ap.add_argument("--minutes", type=float, default=None)
     ap.add_argument("--compare", action="store_true")
-    ap.add_argument("--gui", action="store_true")
+    ap.add_argument("--seed", type=int, default=None, help="randomness seed")
     ap.add_argument("--ambient", type=float, default=None,
                     help="override electronics-bay air temperature (C)")
-    ap.add_argument("--frames", type=int, default=6, help="camera frames to save")
+    ap.add_argument("--frames", type=int, default=4, help="camera snapshots to save")
     ap.add_argument("--out", default=str(ROOT / "simulation" / "results"))
     args = ap.parse_args(argv)
 
     cfg = load_amr_config(args.config or None)
-    cfg["sim"]["gui"] = args.gui
+    if args.seed is not None:
+        cfg["sim"]["seed"] = args.seed
     if args.ambient is not None:
         cfg["plant"]["ambient_c"] = args.ambient
     minutes = args.minutes or cfg["sim"]["duration_s"] / 60

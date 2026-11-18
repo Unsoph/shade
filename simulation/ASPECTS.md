@@ -9,23 +9,24 @@ Status: **have** = in `src/sim/plant.py` today, **partial**, **to build**,
 - [ ] Heat generation: idle + dynamic (f*V^2*activity) + leakage (**partial**: linear k*u + leak)
 - [ ] Multi-mass conduction: die, heatsink, case (**partial**: one node + slow mass)
 - [ ] Compute time vs frequency, t = t_cpu/f + t_mem (**to build**; speed is a constant 0.55)
-- [ ] Sensor noise, lag, quantization (**partial**: noise only)
+- [ ] Sensor noise, lag, quantization (**partial**: noise only; camera pixel noise in AMR twin)
 - [ ] Fan steps / natural convection (**to build**)
 - [x] Hot-swap transient: extra CPU during preload (**have**, AMR twin; RAM not yet)
 - [x] Power-supply sag, undervoltage (**have**, AMR twin battery model)
 - [x] Energy use: Pi, motors, electronics (**have**, AMR twin)
 - Skip: 3D die heat flow, radiation, ageing, enclosure CFD
 
-## AMR platform (src/sim/amr, PyBullet)
+## AMR platform (src/sim/amr, MuJoCo)
 - [x] Differential-drive rigid body, wheel torque limits, casters (**have**)
 - [x] Rolling resistance in drive power (**have**)
-- [x] Onboard camera rendering of shelves and walkers (**have**)
+- [x] Onboard camera: realistic warehouse (racks, cartons, pallets, forklift, workers), shadows (**have**)
+- [x] Seeded randomness: layout, workers, dwell, payload, friction, ambient drift, CPU bursts, cost and pixel noise (**have**)
 - [x] Waypoint route with parking stations (**have**)
 - [ ] Localisation error, obstacle avoidance (**to build**)
 - [ ] Real robot parameters (mass, motors, battery) (**needs your robot**)
 
 ## B. Workload and scene
-- [x] Scene motion from robot driving/parking + walkers (**have**, AMR twin rendered camera)
+- [x] Scene motion from robot driving/parking + walking workers (**have**, AMR twin rendered camera)
 - [ ] Objects per frame (NMS cost) (**to build**)
 - [ ] Lighting changes, dark scenes (**partial**: runtime input faults)
 - [ ] Scenario library: ramp, step, burst, daily cycle (**partial**: scripted, open-loop)
@@ -39,7 +40,7 @@ Status: **have** = in `src/sim/plant.py` today, **partial**, **to build**,
 ## D. OS and software
 - [ ] Memory and swap pressure, closed-loop (**partial**)
 - [ ] SD-card model-load time (**needs Pi**)
-- [ ] CPU competition from other processes (**to build**)
+- [x] CPU competition from other processes (**have**, AMR twin random bursts)
 - [ ] Threading / GC pauses (**needs Pi**)
 
 ## E. Model quality
