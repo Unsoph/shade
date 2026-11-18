@@ -1,0 +1,39 @@
+# AMR digital twin overrides (merged over src/sim/amr/params.py defaults).
+# Use:  python simulation/amr_twin.py --config config/amr_twin.yaml
+# Every value is an ASSUMPTION until replaced by your robot's datasheet and
+# the Pi 5 measurements (docs/EXPERIMENTS.md E1, E2, E6).
+
+sim:
+  duration_s: 900          # 15 simulated minutes
+  camera_fps: 10
+  gui: false               # true opens the PyBullet window
+
+robot:                     # 24 V differential drive, ~22 kg
+  wheel_radius_m: 0.08
+  track_m: 0.44
+  max_v: 0.8               # m/s
+  max_w: 1.5               # rad/s
+
+plant:
+  ambient_c: 35.0          # air inside the robot's electronics bay
+
+battery:
+  capacity_wh: 240.0       # 6S Li-ion pack
+  soc0: 0.9
+  dcdc_min_v: 20.5         # Pi supply drops out below this pack voltage
+
+compute:                   # CPU-seconds per detection per ladder rung
+  det_cost_s: [0.09, 0.09, 0.025, 0.018]
+  swap_s: 3.0
+
+scheduling:
+  gate: true               # skip detections while the scene is static
+
+# Route: stations with dwell_s are where the robot parks (static scene).
+route:
+  - {xy: [4.0, -3.0], dwell_s: 0}
+  - {xy: [4.0, 3.0], dwell_s: 45}
+  - {xy: [-4.0, 3.0], dwell_s: 0}
+  - {xy: [-4.0, -3.0], dwell_s: 45}
+
+policy: {}                 # DecisionEngine overrides, e.g. {confirm_samples: 2}

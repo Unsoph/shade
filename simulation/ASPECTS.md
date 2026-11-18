@@ -11,19 +11,27 @@ Status: **have** = in `src/sim/plant.py` today, **partial**, **to build**,
 - [ ] Compute time vs frequency, t = t_cpu/f + t_mem (**to build**; speed is a constant 0.55)
 - [ ] Sensor noise, lag, quantization (**partial**: noise only)
 - [ ] Fan steps / natural convection (**to build**)
-- [ ] Hot-swap transient: extra CPU and RAM during preload (**to build**)
-- [ ] Optional: power-supply sag, undervoltage
-- [ ] Optional: energy per frame
+- [x] Hot-swap transient: extra CPU during preload (**have**, AMR twin; RAM not yet)
+- [x] Power-supply sag, undervoltage (**have**, AMR twin battery model)
+- [x] Energy use: Pi, motors, electronics (**have**, AMR twin)
 - Skip: 3D die heat flow, radiation, ageing, enclosure CFD
 
+## AMR platform (src/sim/amr, PyBullet)
+- [x] Differential-drive rigid body, wheel torque limits, casters (**have**)
+- [x] Rolling resistance in drive power (**have**)
+- [x] Onboard camera rendering of shelves and walkers (**have**)
+- [x] Waypoint route with parking stations (**have**)
+- [ ] Localisation error, obstacle avoidance (**to build**)
+- [ ] Real robot parameters (mass, motors, battery) (**needs your robot**)
+
 ## B. Workload and scene
-- [ ] Scene motion Markov chain (static / moving / bursts) (**to build**)
+- [x] Scene motion from robot driving/parking + walkers (**have**, AMR twin rendered camera)
 - [ ] Objects per frame (NMS cost) (**to build**)
 - [ ] Lighting changes, dark scenes (**partial**: runtime input faults)
 - [ ] Scenario library: ramp, step, burst, daily cycle (**partial**: scripted, open-loop)
 
 ## C. Pipeline timing
-- [ ] Camera rate vs inference time: queue, drops, latency (**to build**)
+- [ ] Camera rate vs inference time: queue, drops, latency (**partial**: AMR twin drops detections over CPU budget; no latency)
 - [ ] Control sampling interval and sensor delay (**to build**)
 - [ ] Swap duration (**to build**)
 - [ ] Skipped-frame staleness (**needs Pi**: E8 on real video)
