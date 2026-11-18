@@ -1,0 +1,6 @@
+run,det_per_s,dropped_pct,throttled_pct,above_70c_pct,max_temp_c,switches_per_h,model_swaps,energy_wh,pi_energy_wh,distance_m,laps
+static-0,7.29,27.1,48.9,91.8,80.7,0.0,0,3.75,1.67,254.5,6
+static-0+gate,5.22,4.3,0.0,37.4,77.0,0.0,0,3.55,1.47,254.5,6
+thermostat+gate,5.14,4.2,0.0,30.1,75.1,16.0,2,3.53,1.46,254.5,6
+shade,5.41,0.4,0.0,34.3,72.8,4.0,0,3.57,1.49,254.5,6
+shade+gate,4.5,4.0,0.0,4.4,71.6,40.0,0,3.47,1.39,254.5,6
