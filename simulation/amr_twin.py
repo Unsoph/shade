@@ -24,7 +24,8 @@ from src.sim.amr.twin import AmrTwin  # noqa: E402
 from src.sim.policies import Shade, Static, Thermostat  # noqa: E402
 
 N_RUNGS = 4
-COMPARE = [("static-0", True), ("thermostat", True), ("shade", False), ("shade", True)]
+COMPARE = [("static-0", False), ("static-0", True), ("thermostat", True),
+           ("shade", False), ("shade", True)]
 
 
 def make_policy(name: str, cfg: dict):
@@ -90,12 +91,16 @@ def main(argv=None) -> int:
     ap.add_argument("--minutes", type=float, default=None)
     ap.add_argument("--compare", action="store_true")
     ap.add_argument("--gui", action="store_true")
+    ap.add_argument("--ambient", type=float, default=None,
+                    help="override electronics-bay air temperature (C)")
     ap.add_argument("--frames", type=int, default=6, help="camera frames to save")
     ap.add_argument("--out", default=str(ROOT / "simulation" / "results"))
     args = ap.parse_args(argv)
 
     cfg = load_amr_config(args.config or None)
     cfg["sim"]["gui"] = args.gui
+    if args.ambient is not None:
+        cfg["plant"]["ambient_c"] = args.ambient
     minutes = args.minutes or cfg["sim"]["duration_s"] / 60
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
